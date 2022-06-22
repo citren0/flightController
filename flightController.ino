@@ -1,49 +1,11 @@
-#include <Wire.h>
-#include <SoftwareSerial.h>
 #include "MPU6050.h"
 
 MPU6050 mpu;
 
 TaskHandle_t keepTrackJob;
 
-// Gyro and Timing Globals ------------------------------------------------
-const int timeBetweenLoopsms = 3;
-const double deltaT = timeBetweenLoopsms / 1000.0;
-
-double xGyroOffset = 0, yGyroOffset = 0, zGyroOffset = 0;
-
-double currentGyroXAngle = 0, currentGyroYAngle = 0, currentGyroZAngle = 0;
-
-double xGyroRead = 0, yGyroRead = 0, zGyroRead = 0;
-
-long int loopCount = 0;
-// ------------------------------------------------------------------------
-
-void calibrate() {
-  xGyroOffset = mpu.getGyroX();
-  yGyroOffset = mpu.getGyroY();
-  zGyroOffset = mpu.getGyroZ();
-}
-
-void keepGyro(void *) {
-  while(true) {
-    double xGyroRead = mpu.getGyroX() - xGyroOffset;
-    double yGyroRead = mpu.getGyroY() - yGyroOffset;
-    double zGyroRead = mpu.getGyroZ() - zGyroOffset;
-
-    if(xGyroRead < 0.01 && xGyroRead > -0.01)
-      xGyroRead = 0;
-
-    if(yGyroRead < 0.01 && yGyroRead > -0.01)
-      yGyroRead = 0;
-
-    if(zGyroRead < 0.01 && zGyroRead > -0.01)
-      zGyroRead = 0;
-
-    currentGyroXAngle += xGyroRead * deltaT;
-    currentGyroYAngle += yGyroRead * deltaT;
-    currentGyroZAngle += zGyroRead * deltaT;
-  }
+void keepTrack(void *) {
+  mpu.startComplementaryFilter();
 }
 
 void setup(void) {
@@ -53,9 +15,9 @@ void setup(void) {
 
   mpu.initMPU();
   delay(100);
-  calibrate();
+  mpu.calibrate();
 
-  xTaskCreatePinnedToCore(keepGyro, "keepGyro", 50000, NULL, 0, &keepTrackJob, 1);
+  xTaskCreate(keepTrack, "keepTrack", 50000, NULL, 0, &keepTrackJob);
 
   // -------------------------------------------------
   
@@ -64,6 +26,9 @@ void setup(void) {
 
 void loop() {
 
-  Serial.println("x " + String(currentGyroXAngle) + " y " + String(currentGyroYAngle) + " z " + String(currentGyroZAngle));
+  double * valueArray = mpu.getAngleArray();
+
+  Serial.println("x " + String(valueArray[0]) + " y " + String(valueArray[1]) + " z " + String(valueArray[2]));
+
   delay(100);
 }
