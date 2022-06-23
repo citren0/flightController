@@ -5,6 +5,8 @@
 
 #include <Wire.h>
 
+TaskHandle_t keepTrackJob;
+
 // TODO
 // 1) implement altitude estimate with z accel reading.
 
@@ -16,6 +18,29 @@ class MPU6050 {
     double angles[3] = {0.0, 0.0, 0.0};
     int tDelay = 4; //ms, takes about 4 on an esp32
     double deltaT = tDelay / 1000.0;
+
+    double gyroWeight = 0.98;
+    double accelerometerWeight = 0.02;
+
+    static void startWrapper(void * pvArgument) {
+      reinterpret_cast<MPU6050*>(pvArgument)->startComplementaryFilter();
+    }
+
+    inline void start() {
+      xTaskCreate(startWrapper, "keepTrack", 50000, this, 0, &keepTrackJob);
+    }
+
+    void startComplementaryFilter() { //should take about 4ms
+      while(true) {
+        float xDeltaAngle = getGyroX() * deltaT;
+        float yDeltaAngle = getGyroY() * deltaT;
+        float zDeltaAngle = getGyroZ() * deltaT;
+
+        angles[0] = ((xDeltaAngle + angles[0]) * gyroWeight) + (accelerometerWeight * getAccelAngleX());
+        angles[1] = ((yDeltaAngle + angles[1]) * gyroWeight) + (accelerometerWeight * getAccelAngleY());
+        angles[2] += zDeltaAngle;
+      }     
+    }
   
   public:
 
@@ -27,6 +52,9 @@ class MPU6050 {
       Wire.write(0x6B);
       Wire.write(0x00);
       Wire.endTransmission(true);
+      calibrate();
+      start();
+      
     }
 
     void calibrate() {
@@ -51,18 +79,6 @@ class MPU6050 {
 
     double * getAngleArray() { //returns ptr to array that stores up to date angle values in x,y,z
       return angles;
-    }
-
-    void startComplementaryFilter() { //should take about 4ms
-      while(true) {
-        double xDeltaAngle = getGyroX() * deltaT;
-        double yDeltaAngle = getGyroY() * deltaT;
-        double zDeltaAngle = getGyroZ() * deltaT;
-
-        angles[0] = ((xDeltaAngle + angles[0]) * 0.98) + (0.02 * getAccelAngleX());
-        angles[1] = ((yDeltaAngle + angles[1]) * 0.98) + (0.02 * getAccelAngleY());
-        angles[2] += zDeltaAngle;
-      }     
     }
 
     inline double getGyroX() { // returns Deg / s

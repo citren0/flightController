@@ -2,22 +2,12 @@
 
 MPU6050 mpu;
 
-TaskHandle_t keepTrackJob;
-
-void keepTrack(void *) {
-  mpu.startComplementaryFilter();
-}
-
 void setup(void) {
   Serial.begin(115200);
 
-  // Gyro init ---------------------------------------
+  // MPU init ---------------------------------------
 
   mpu.initMPU();
-  delay(100);
-  mpu.calibrate();
-
-  xTaskCreate(keepTrack, "keepTrack", 50000, NULL, 0, &keepTrackJob);
 
   // -------------------------------------------------
   
