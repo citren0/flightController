@@ -90,6 +90,8 @@ class MPU6050 {
       Most useful if called while the MPU is stationary and facing upright.
     */
     void calibrate() {
+      delay(2000);
+      
       double tempXGyroTot = 0, tempYGyroTot = 0, tempZGyroTot = 0;
       double tempXAccelTot = 0, tempYAccelTot = 0;
   
@@ -106,6 +108,8 @@ class MPU6050 {
       zGyroOffset = tempZGyroTot / calibrateLength;
       xAccelOffset = tempXAccelTot / calibrateLength;
       yAccelOffset = tempYAccelTot / calibrateLength;
+
+      delay(1000);
       
     }
 
